@@ -1,2 +1,34 @@
 {
+  "startup_india_notification_2019.pdf": {
+    "source_url": "https://www.startupindia.gov.in/content/dam/invest-india/Templates/public/198117.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "sisfs_guidelines.pdf": {
+    "source_url": "https://www.startupindia.gov.in/content/dam/invest-india/Templates/public/Guidelines%20for%20Startup%20India%20Seed%20Fund%20Scheme.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "ffs_2_guidelines.pdf": {
+    "source_url": "https://www.dpiit.gov.in/static/uploads/2026/04/8949d8e0dabf11cb9291b00ec1d1f727.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "mudra_pmmy.pdf": {
+    "source_url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2024/oct/doc20241029426401.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "msme_udyam_notification.pdf": {
+    "source_url": "https://dcmsme.gov.in/State-Gov/Notification_%20S%20O%202119.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "cgtmse_scheme_document.pdf": {
+    "source_url": "https://www.cgtmse.in/Default/ViewFile/?id=1743176302611_CGTMSE+-+Scheme+Document+CGS+I_updated+as+on+Apr+1+2025.pdf&path=Page",
+    "retrieved_on": "2026-10-22"
+  },
+  "standup_india_faq.pdf": {
+    "source_url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2022/apr/doc20224535701.pdf",
+    "retrieved_on": "2026-10-22"
+  },
+  "standup_india_factsheet.pdf": {
+    "source_url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2022/apr/doc20224535601.pdf",
+    "retrieved_on": "2026-10-22"
+  }
 }
