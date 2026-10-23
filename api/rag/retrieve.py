@@ -40,13 +40,19 @@ class RetrievedChunk:
     page: object
     retrieved_on: str
     section: str
+    scheme: str = ""
 
 
-def search(collection, query_embedding: list[float], k: int = DEFAULT_K) -> list[RetrievedChunk]:
-    """Run the similarity search against an open collection. No API call here."""
+def search(collection, query_embedding: list[float], k: int = DEFAULT_K,
+           scheme: Optional[str] = None) -> list[RetrievedChunk]:
+    """Run the similarity search against an open collection. No API call here.
+
+    If `scheme` is given, only chunks tagged with that scheme id are considered.
+    """
     res = collection.query(
         query_embeddings=[query_embedding],
         n_results=k,
+        where={"scheme": scheme} if scheme else None,
         include=["documents", "metadatas", "distances"],
     )
     # Chroma nests one list per query; we sent a single query -> index [0].
@@ -67,18 +73,20 @@ def search(collection, query_embedding: list[float], k: int = DEFAULT_K) -> list
             page=meta.get("page", ""),
             retrieved_on=meta.get("retrieved_on", ""),
             section=meta.get("section", ""),
+            scheme=meta.get("scheme", ""),
         ))
     return hits
 
 
-def retrieve(query: str, k: int = DEFAULT_K, *, client=None) -> list[RetrievedChunk]:
+def retrieve(query: str, k: int = DEFAULT_K, *, scheme: Optional[str] = None,
+             client=None) -> list[RetrievedChunk]:
     """Embed the query and return the top-k chunks from the persisted index."""
     client = client or store.get_client()
     collection = store.get_collection(client)
     if collection.count() == 0:
         raise RuntimeError("Index is empty. Run scripts/build_index.py first.")
     query_embedding = embed_query(query)
-    return search(collection, query_embedding, k)
+    return search(collection, query_embedding, k, scheme)
 
 
 def _print_hits(query: str, hits: list[RetrievedChunk]) -> None:
@@ -97,10 +105,11 @@ def _cli() -> None:
     p = argparse.ArgumentParser(description="Query the SchemeSetu retrieval index.")
     p.add_argument("query", nargs="*", help="Question (omit for interactive mode).")
     p.add_argument("-k", type=int, default=DEFAULT_K, help="Number of chunks to return.")
+    p.add_argument("--scheme", help="Restrict to one scheme id (see corpus/schemes.json).")
     args = p.parse_args()
 
     if args.query:
-        _print_hits(" ".join(args.query), retrieve(" ".join(args.query), args.k))
+        _print_hits(" ".join(args.query), retrieve(" ".join(args.query), args.k, scheme=args.scheme))
         return
 
     print("Interactive retrieval. Type a question (blank line or Ctrl-C to quit).")
@@ -112,7 +121,7 @@ def _cli() -> None:
             break
         if not q:
             break
-        _print_hits(q, retrieve(q, args.k))
+        _print_hits(q, retrieve(q, args.k, scheme=args.scheme))
 
 
 if __name__ == "__main__":
