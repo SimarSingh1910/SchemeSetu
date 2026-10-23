@@ -1,0 +1,22 @@
+{
+  "startup_india": {
+    "name": "Startup India",
+    "docs": [
+      "startup_india_notification_2019.pdf",
+      "sisfs_guidelines.pdf",
+      "ffs_2_guidelines.pdf"
+    ]
+  },
+  "mudra": {
+    "name": "MUDRA (PMMY)",
+    "docs": ["mudra_pmmy.pdf"]
+  },
+  "msme": {
+    "name": "MSME (Udyam, CGTMSE)",
+    "docs": ["msme_udyam_notification.pdf", "cgtmse_scheme_document.pdf"]
+  },
+  "standup_india": {
+    "name": "Stand-Up India",
+    "docs": ["standup_india_faq.pdf", "standup_india_factsheet.pdf"]
+  }
+}

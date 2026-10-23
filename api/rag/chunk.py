@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 # corpus/manifest.json sits next to corpus/raw/.
 MANIFEST_PATH = CORPUS_RAW.parent / "manifest.json"
+# Maps each scheme id to its display name and the PDFs that belong to it.
+SCHEMES_PATH = CORPUS_RAW.parent / "schemes.json"
 
 # Defaults from the primer: ~500-token chunks with ~50-token overlap.
 DEFAULT_CHUNK_TOKENS = 500
@@ -52,6 +54,7 @@ class Chunk:
     source_url: str
     page: int
     retrieved_on: str
+    scheme: str = ""
     section: Optional[str] = None
     embedding: Optional[list[float]] = None  # filled by the embed step
 
@@ -60,6 +63,7 @@ class Chunk:
         return {
             "chunk_id": self.chunk_id,
             "source_doc": self.source_doc,
+            "scheme": self.scheme,
             "source_url": self.source_url,
             "page": self.page,
             "section": self.section or "",
@@ -87,6 +91,15 @@ def load_manifest(manifest_path: Path = MANIFEST_PATH) -> dict[str, DocProvenanc
             retrieved_on=meta.get("retrieved_on", ""),
         )
     return out
+
+
+def load_schemes(schemes_path: Path = SCHEMES_PATH) -> dict[str, str]:
+    """Return {pdf_filename: scheme_id} built from schemes.json."""
+    if not schemes_path.exists():
+        logger.warning("No scheme mapping at %s -- chunks will have no scheme.", schemes_path)
+        return {}
+    raw = json.loads(schemes_path.read_text(encoding="utf-8"))
+    return {doc: scheme_id for scheme_id, info in raw.items() for doc in info["docs"]}
 
 
 def _provenance_for(manifest: dict[str, DocProvenance], source_doc: str) -> DocProvenance:
@@ -142,16 +155,21 @@ def chunk_text(
 def chunk_corpus(
     corpus_dir: Path = CORPUS_RAW,
     manifest_path: Path = MANIFEST_PATH,
+    schemes_path: Path = SCHEMES_PATH,
     *,
     chunk_tokens: int = DEFAULT_CHUNK_TOKENS,
     overlap_tokens: int = DEFAULT_OVERLAP_TOKENS,
 ) -> Iterator[Chunk]:
     """Yield Chunk objects for every PDF in the corpus, with provenance attached."""
     manifest = load_manifest(manifest_path)
+    schemes = load_schemes(schemes_path)
     for rec in iter_corpus(corpus_dir):
         if not rec.text:
             continue  # empty page (ingest already warned)
         prov = _provenance_for(manifest, rec.source_doc)
+        scheme = schemes.get(rec.source_doc, "")
+        if not scheme:
+            logger.warning("%s is not assigned to any scheme in schemes.json.", rec.source_doc)
         stem = _slug(rec.source_doc)
         for idx, ctext in enumerate(
             chunk_text(rec.text, chunk_tokens=chunk_tokens, overlap_tokens=overlap_tokens)
@@ -163,6 +181,7 @@ def chunk_corpus(
                 source_url=prov.source_url,
                 page=rec.page_number,
                 retrieved_on=prov.retrieved_on,
+                scheme=scheme,
             )
 
 

@@ -20,6 +20,8 @@ from typing import Iterator
 from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
+# pypdf logs a warning per font on some gazette PDFs; it is just noise here.
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 # corpus/raw/ sits two levels up from this file: api/rag/ingest.py -> api/corpus/raw
 CORPUS_RAW = Path(__file__).resolve().parents[1] / "corpus" / "raw"
