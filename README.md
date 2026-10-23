@@ -21,10 +21,12 @@ Python 3.11+ · FastAPI · Google Gemini (Flash) via `google-genai` · Chroma ·
 ```
 api/
   main.py            # FastAPI app, POST /query
-  rag/               # ingest, chunk, embed, store, retrieve, generate, schema
+  rag/               # ingest, chunk, embed, store, indexer, retrieve, generate, schema
   eval/              # retrieval_eval, answer_eval, eval_set.json
   scripts/           # build_index.py
   corpus/raw/        # official source PDFs (human-supplied)
+  corpus/schemes.json  # scheme -> PDFs mapping
+  tests/             # pytest (offline)
   data/index/        # persisted Chroma store (gitignored)
 web/                 # React + Vite + Tailwind frontend
 ```
