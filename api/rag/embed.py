@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 EMBED_MODEL = "gemini-embedding-001"          # GA model, supports task_type
 TASK_DOCUMENT = "RETRIEVAL_DOCUMENT"          # for indexed corpus chunks
 TASK_QUERY = "RETRIEVAL_QUERY"                # for live user queries
-DEFAULT_BATCH_SIZE = 32                       # keeps each request under token limits
+DEFAULT_BATCH_SIZE = 16                       # keeps each request under token limits
+DEFAULT_PAUSE = 5.0                           # seconds between batches (free-tier token/min cap)
 
 # --- Backoff tuning ----------------------------------------------------------
 _RETRY_CODES = {429, 500, 502, 503, 504}
@@ -82,14 +83,20 @@ def embed_texts(
     *,
     task_type: str = TASK_DOCUMENT,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    pause: float = 0.0,
     client: genai.Client | None = None,
 ) -> list[list[float]]:
-    """Embed a list of texts (order preserved), batching to respect API limits."""
+    """Embed a list of texts (order preserved), batching to respect API limits.
+
+    `pause` sleeps between batches so bulk indexing stays under the free-tier quota.
+    """
     if not texts:
         return []
     client = client or get_client()
     out: list[list[float]] = []
     for i in range(0, len(texts), batch_size):
+        if i and pause:
+            time.sleep(pause)
         batch = texts[i:i + batch_size]
         logger.info("Embedding %d-%d of %d", i + 1, i + len(batch), len(texts))
         out.extend(_embed_batch(client, batch, task_type))

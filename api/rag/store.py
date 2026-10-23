@@ -61,3 +61,11 @@ def add_chunks(collection, chunks: "Iterable[Chunk]", embeddings: list[list[floa
 def get_collection(client: chromadb.ClientAPI):
     """Open the existing collection for querying (retrieve step uses this)."""
     return client.get_collection(COLLECTION_NAME)
+
+
+def index_is_ready(client: chromadb.ClientAPI) -> bool:
+    """True if the collection exists and holds at least one chunk."""
+    try:
+        return get_collection(client).count() > 0
+    except Exception:
+        return False
