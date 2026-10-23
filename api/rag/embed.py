@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 EMBED_MODEL = "gemini-embedding-001"          # GA model, supports task_type
 TASK_DOCUMENT = "RETRIEVAL_DOCUMENT"          # for indexed corpus chunks
 TASK_QUERY = "RETRIEVAL_QUERY"                # for live user queries
-DEFAULT_BATCH_SIZE = 16                       # keeps each request under token limits
-DEFAULT_PAUSE = 5.0                           # seconds between batches (free-tier token/min cap)
+DEFAULT_BATCH_SIZE = 1                        # free tier 429s on multi-content requests
+DEFAULT_PAUSE = 2.0                           # seconds between batches (free-tier per-minute cap)
 
 # --- Backoff tuning ----------------------------------------------------------
 _RETRY_CODES = {429, 500, 502, 503, 504}
-_MAX_ATTEMPTS = 6
+_MAX_ATTEMPTS = 10    # long enough to ride out a full per-minute quota window
 _BASE_DELAY = 2.0     # seconds
 _MAX_DELAY = 60.0
 
