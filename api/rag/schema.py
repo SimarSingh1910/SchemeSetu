@@ -29,6 +29,7 @@ class LLMSection(BaseModel):
 
     source_doc: str
     points: list[str]
+    excerpts: list[int] = Field(default_factory=list)  # [n] numbers the points came from
 
 
 class LLMAnswer(BaseModel):
