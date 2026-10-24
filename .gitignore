@@ -1,5 +1,6 @@
 .env
-data/index/
+api/data/index/*
+!api/data/index/.gitkeep
 __pycache__/
 node_modules/
 web/dist/
