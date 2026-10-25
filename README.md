@@ -15,12 +15,12 @@ The project ships with an **evaluation harness** that measures retrieval quality
 
 ## Stack
 Python 3.11+ · FastAPI · Google Gemini (Flash) via `google-genai` · Chroma · pypdf/pdfplumber
-· RAGAS · React + TypeScript + Vite + Tailwind.
+· React + TypeScript + Vite + Tailwind.
 
 ## Layout
 ```
 api/
-  main.py            # FastAPI app, POST /query
+  main.py            # FastAPI app: /api/health, /api/schemes, /api/query
   rag/               # ingest, chunk, embed, store, indexer, retrieve, generate, schema
   eval/              # retrieval_eval, answer_eval, eval_set.json
   scripts/           # build_index.py
@@ -36,6 +36,13 @@ web/                 # React + Vite + Tailwind frontend
 cd api
 python -m venv .venv
 .venv\Scripts\activate        # Windows
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # requirements.txt for deploy only
 cp .env.example .env          # then set GEMINI_API_KEY
 ```
+
+Run the API (after building the index with `python scripts/build_index.py`):
+```bash
+uvicorn main:app --reload
+pytest
+```
+Set `CORS_ORIGINS` (comma-separated) to allow a deployed frontend origin.
