@@ -46,3 +46,10 @@ uvicorn main:app --reload
 pytest
 ```
 Set `CORS_ORIGINS` (comma-separated) to allow a deployed frontend origin.
+
+Run the frontend (proxies `/api` to the API on port 8000):
+```bash
+cd web
+npm install
+npm run dev      # npm run build for a production bundle
+```
