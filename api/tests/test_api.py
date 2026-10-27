@@ -101,3 +101,34 @@ def test_unexpected_error_is_500(monkeypatch):
 def test_cors_allows_local_dev_origin():
     r = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
     assert r.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_query_while_index_builds_is_503(captured):
+    main._building.set()
+    try:
+        r = client.post("/api/query", json={"question": "hi"})
+    finally:
+        main._building.clear()
+    assert r.status_code == 503
+    assert "still loading" in r.json()["detail"]
+    assert captured == []
+
+
+def test_frontend_is_served_with_spa_fallback(tmp_path, monkeypatch):
+    import importlib
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "app.js").write_text("console.log(1)")
+    (tmp_path / "index.html").write_text("<div id=root></div>")
+    monkeypatch.setenv("WEB_DIST", str(tmp_path))
+    app = importlib.reload(main).app
+    try:
+        c = TestClient(app)
+        assert "root" in c.get("/").text
+        assert "root" in c.get("/some/page").text
+        assert c.get("/assets/app.js").text == "console.log(1)"
+        assert c.get("/api/health").json() == {"status": "ok"}
+        assert c.get("/api/nope").status_code == 404
+    finally:
+        monkeypatch.delenv("WEB_DIST")
+        importlib.reload(main)
