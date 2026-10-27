@@ -53,3 +53,14 @@ cd web
 npm install
 npm run dev      # npm run build for a production bundle
 ```
+
+## Deploy
+The repo-root `Dockerfile` builds the frontend and serves it from FastAPI together with
+the API on `$PORT` (default 8000):
+```bash
+docker build -t schemesetu .
+docker run -p 8000:8000 -e GEMINI_API_KEY=... schemesetu
+```
+If `api/data/index` is empty at startup the index is built in the background (paced for
+the free tier); `/api/query` answers "still loading" until it finishes. Set `GEMINI_API_KEY`
+as a secret on the host, and `CORS_ORIGINS` only if the frontend is hosted elsewhere.

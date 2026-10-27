@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/__pycache__
+**/.venv
+**/.env
+web/dist
+api/data/index/*
+!api/data/index/.gitkeep
+api/tests
+api/eval
