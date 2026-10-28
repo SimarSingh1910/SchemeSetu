@@ -1,66 +1,97 @@
 # SchemeSetu
 
-A grounded Retrieval-Augmented Generation (RAG) assistant that answers questions about
-Indian government **startup & MSME schemes**. Every answer is grounded only in an indexed
-corpus of official scheme documents and returns citations back to the exact source chunks.
+SchemeSetu answers questions about Indian government startup and MSME schemes. You type a
+question, optionally pick a scheme, and get an answer built only from the official PDFs in
+`api/corpus/raw/`, grouped by the document each point came from.
 
-The project ships with an **evaluation harness** that measures retrieval quality
-(Hit-Rate@k, MRR) and answer quality (RAGAS faithfulness, answer relevance) with numbers.
+## Features
 
-## Corpus (bounded)
-1. Startup India (DPIIT recognition, 80-IAC, Angel Tax/Sec 56, Fund of Funds, SISFS)
-2. MUDRA / PMMY (Shishu / Kishore / Tarun)
-3. MSME (Udyam registration, classification thresholds, CGTMSE)
-4. Stand-Up India (SC/ST & women entrepreneurs)
+- Ask a question in plain language and get a short summary plus supporting points.
+- Filter by scheme, or search across all of them.
+- Answers are grouped by source PDF, with the page numbers each point was taken from.
+- Questions the documents don't cover return "not found" instead of a guess.
+- If Gemini is unavailable or out of quota, the app falls back to showing the most relevant
+  excerpts directly, with a small note saying so.
 
-## Stack
-Python 3.11+ · FastAPI · Google Gemini (Flash) via `google-genai` · Chroma · pypdf/pdfplumber
-· React + TypeScript + Vite + Tailwind.
+## Schemes and documents
 
-## Layout
-```
-api/
-  main.py            # FastAPI app: /api/health, /api/schemes, /api/query
-  rag/               # ingest, chunk, embed, store, indexer, retrieve, generate, schema
-  eval/              # retrieval_eval, answer_eval, eval_set.json
-  scripts/           # build_index.py
-  corpus/raw/        # official source PDFs (human-supplied)
-  corpus/schemes.json  # scheme -> PDFs mapping
-  tests/             # pytest (offline)
-  data/index/        # persisted Chroma store (gitignored)
-web/                 # React + Vite + Tailwind frontend
-```
+| Scheme | PDFs |
+| --- | --- |
+| Startup India | `startup_india_notification_2019.pdf`, `sisfs_guidelines.pdf`, `ffs_2_guidelines.pdf` |
+| MUDRA | `mudra_pmmy.pdf` |
+| MSME | `msme_udyam_notification.pdf`, `cgtmse_scheme_document.pdf` |
+| Stand-Up India | `standup_india_faq.pdf`, `standup_india_factsheet.pdf` |
 
-## Setup
+The mapping lives in `api/corpus/schemes.json`.
+
+## Tech stack
+
+Python 3.11, FastAPI, Google Gemini (`google-genai`) for embeddings and generation, Chroma for
+the vector store, pypdf for extraction. Frontend: React, TypeScript, Vite and Tailwind.
+
+## Run locally
+
+You need a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+
+Backend:
+
 ```bash
 cd api
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-pip install -r requirements-dev.txt   # requirements.txt for deploy only
-cp .env.example .env          # then set GEMINI_API_KEY
-```
-
-Run the API (after building the index with `python scripts/build_index.py`):
-```bash
+source .venv/bin/activate          # .venv\Scripts\activate on Windows
+pip install -r requirements-dev.txt
+cp .env.example .env               # then set GEMINI_API_KEY
 uvicorn main:app --reload
-pytest
 ```
-Set `CORS_ORIGINS` (comma-separated) to allow a deployed frontend origin.
 
-Run the frontend (proxies `/api` to the API on port 8000):
+On first start the index is built in the background from the PDFs (paced for the free-tier
+rate limits, so it takes a few minutes). Until it finishes, `/api/query` replies that the
+index is still loading. You can also build it up front with `python scripts/build_index.py`.
+Run the tests with `pytest`.
+
+Frontend (proxies `/api` to port 8000):
+
 ```bash
 cd web
 npm install
-npm run dev      # npm run build for a production bundle
+npm run dev
 ```
 
-## Deploy
-The repo-root `Dockerfile` builds the frontend and serves it from FastAPI together with
-the API on `$PORT` (default 8000):
+## Run with Docker
+
+The root `Dockerfile` builds the frontend and serves it from FastAPI on `$PORT`:
+
 ```bash
 docker build -t schemesetu .
-docker run -p 8000:8000 -e GEMINI_API_KEY=... schemesetu
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-key schemesetu
 ```
-If `api/data/index` is empty at startup the index is built in the background (paced for
-the free tier); `/api/query` answers "still loading" until it finishes. Set `GEMINI_API_KEY`
-as a secret on the host, and `CORS_ORIGINS` only if the frontend is hosted elsewhere.
+
+Then open http://localhost:8000.
+
+## Deploy to Render
+
+The repo includes a `render.yaml` blueprint for a single free-tier web service.
+
+1. Go to [render.com](https://render.com) and choose **New** -> **Blueprint**.
+2. Pick this repository.
+3. Paste your `GEMINI_API_KEY` when prompted.
+4. Click **Deploy**.
+5. Open the `https://<name>.onrender.com` link once the deploy is live.
+
+Free services sleep when idle and the disk is not persistent, so after a cold start the index
+is rebuilt in the background. Questions asked in the first few minutes get a "still loading"
+message. Set `CORS_ORIGINS` only if the frontend is hosted on a different origin.
+
+## Project layout
+
+```
+api/
+  main.py            FastAPI app (/api/health, /api/schemes, /api/query) and static frontend
+  rag/               ingest, chunk, embed, store, indexer, retrieve, generate
+  corpus/            source PDFs, scheme mapping, manifest
+  eval/              retrieval and answer evaluation scripts
+  tests/             offline pytest suite
+web/                 React frontend
+render.yaml          Render blueprint
+Dockerfile
+```
