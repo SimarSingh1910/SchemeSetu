@@ -34,6 +34,7 @@ _RETRY_CODES = {429, 500, 502, 503, 504}
 _MAX_ATTEMPTS = 10    # long enough to ride out a full per-minute quota window
 _BASE_DELAY = 2.0     # seconds
 _MAX_DELAY = 60.0
+QUERY_ATTEMPTS = 3   # live queries: fail fast rather than hang the request
 
 _ENV_PATH = Path(__file__).resolve().parents[1] / ".env"  # api/.env
 
@@ -58,10 +59,11 @@ def _sleep_for(attempt: int) -> None:
     time.sleep(delay)
 
 
-def _embed_batch(client: genai.Client, texts: list[str], task_type: str) -> list[list[float]]:
+def _embed_batch(client: genai.Client, texts: list[str], task_type: str,
+                 max_attempts: int = _MAX_ATTEMPTS) -> list[list[float]]:
     """Embed one batch, retrying on 429/5xx with exponential backoff."""
     last_exc: Exception | None = None
-    for attempt in range(_MAX_ATTEMPTS):
+    for attempt in range(max_attempts):
         try:
             resp = client.models.embed_content(
                 model=EMBED_MODEL,
@@ -71,11 +73,11 @@ def _embed_batch(client: genai.Client, texts: list[str], task_type: str) -> list
             return [e.values for e in resp.embeddings]
         except errors.APIError as exc:
             last_exc = exc
-            if getattr(exc, "code", None) in _RETRY_CODES and attempt < _MAX_ATTEMPTS - 1:
+            if getattr(exc, "code", None) in _RETRY_CODES and attempt < max_attempts - 1:
                 _sleep_for(attempt)
                 continue
             raise
-    raise RuntimeError(f"Embedding failed after {_MAX_ATTEMPTS} attempts") from last_exc
+    raise RuntimeError(f"Embedding failed after {max_attempts} attempts") from last_exc
 
 
 def embed_texts(
@@ -85,6 +87,7 @@ def embed_texts(
     batch_size: int = DEFAULT_BATCH_SIZE,
     pause: float = 0.0,
     client: genai.Client | None = None,
+    max_attempts: int = _MAX_ATTEMPTS,
 ) -> list[list[float]]:
     """Embed a list of texts (order preserved), batching to respect API limits.
 
@@ -99,10 +102,13 @@ def embed_texts(
             time.sleep(pause)
         batch = texts[i:i + batch_size]
         logger.info("Embedding %d-%d of %d", i + 1, i + len(batch), len(texts))
-        out.extend(_embed_batch(client, batch, task_type))
+        out.extend(_embed_batch(client, batch, task_type, max_attempts))
     return out
 
 
 def embed_query(text: str, *, client: genai.Client | None = None) -> list[float]:
-    """Embed a single user query with the query task type."""
-    return embed_texts([text], task_type=TASK_QUERY, client=client)[0]
+    """Embed a single user query with the query task type.
+
+    A user is waiting, so give up after a few tries instead of riding out a full quota window.
+    """
+    return embed_texts([text], task_type=TASK_QUERY, client=client, max_attempts=QUERY_ATTEMPTS)[0]

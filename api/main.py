@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 
 load_dotenv(Path(__file__).parent / ".env")
 
+from google.genai import errors as genai_errors  # noqa: E402
 from rag.generate import DEFAULT_K, answer_question  # noqa: E402
 from rag.schema import Answer  # noqa: E402
 
@@ -28,6 +29,9 @@ MAX_QUESTION_CHARS = 500
 MAX_K = 10
 WEB_DIST = Path(os.getenv("WEB_DIST", Path(__file__).resolve().parent.parent / "web" / "dist"))
 LOADING_MESSAGE = "The document index is still loading. Please try again in a minute."
+
+QUOTA_MESSAGE = "The service has hit its usage quota. Please wait a minute and try again."
+UNAVAILABLE_MESSAGE = "The language service is unavailable right now. Please try again shortly."
 
 _building = threading.Event()
 
@@ -105,7 +109,12 @@ def query(req: QueryRequest) -> Answer:
         raise HTTPException(status_code=422, detail=f"Unknown scheme '{scheme}'.")
     try:
         return answer_question(req.question, scheme, req.k)
-    except RuntimeError as exc:  # e.g. empty index
+    except genai_errors.APIError as exc:
+        logger.warning("Gemini error on query: %s", exc)
+        if getattr(exc, "code", None) == 429:
+            raise HTTPException(status_code=429, detail=QUOTA_MESSAGE)
+        raise HTTPException(status_code=503, detail=UNAVAILABLE_MESSAGE)
+    except RuntimeError as exc:  # e.g. empty index, missing API key
         logger.error("Query failed: %s", exc)
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception:

@@ -132,3 +132,15 @@ def test_frontend_is_served_with_spa_fallback(tmp_path, monkeypatch):
     finally:
         monkeypatch.delenv("WEB_DIST")
         importlib.reload(main)
+
+
+def test_gemini_quota_on_query_is_429(monkeypatch):
+    from google.genai import errors
+
+    def boom(*a, **kw):
+        raise errors.APIError(429, {"error": {"message": "quota"}})
+
+    monkeypatch.setattr(main, "answer_question", boom)
+    r = client.post("/api/query", json={"question": "hi"})
+    assert r.status_code == 429
+    assert "quota" in r.json()["detail"]
