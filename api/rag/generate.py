@@ -12,6 +12,7 @@ import os
 import re
 from typing import Optional
 
+import httpx
 from google.genai import errors, types
 
 from .embed import _RETRY_CODES, _sleep_for, get_client
@@ -33,6 +34,9 @@ MIN_SCORE = float(os.getenv("MIN_RELEVANCE_SCORE", "0.67"))
 MAX_EXCERPT_CHARS = 600
 # Attempts per model. A user is waiting, so retry far less than bulk embedding does.
 GEN_ATTEMPTS = 2
+# Per-call cap. Under heavy demand a model can sit on a request for minutes; past this
+# we move on to the next model and, failing that, the extractive answer.
+GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "20"))
 
 NOT_FOUND_MESSAGE = (
     "This was not found in the scheme documents. Try rephrasing the question "
@@ -124,10 +128,13 @@ def _generate(client, model: str, contents: str):
                     temperature=0.1,
                     response_mime_type="application/json",
                     response_schema=LLMAnswer,
+                    http_options=types.HttpOptions(timeout=int(GEN_TIMEOUT_S * 1000)),
                 ),
             )
         except errors.APIError as exc:
-            if getattr(exc, "code", None) in _RETRY_CODES and attempt < GEN_ATTEMPTS - 1:
+            # 504 means it already hit GEN_TIMEOUT_S; retrying would just double the wait.
+            code = getattr(exc, "code", None)
+            if code in _RETRY_CODES and code != 504 and attempt < GEN_ATTEMPTS - 1:
                 _sleep_for(attempt)
                 continue
             raise
@@ -157,6 +164,11 @@ def _call_llm(question: str, chunks: list[RetrievedChunk], client=None) -> LLMAn
         try:
             resp = _generate(client, model, contents)
             break
+        except httpx.TimeoutException:
+            if i < len(GEN_MODELS) - 1:
+                logger.warning("%s timed out after %.0fs; trying %s.", model, GEN_TIMEOUT_S, GEN_MODELS[i + 1])
+                continue
+            raise
         except errors.APIError as exc:
             if getattr(exc, "code", None) in _RETRY_CODES and i < len(GEN_MODELS) - 1:
                 logger.warning("%s unavailable (%s); trying %s.", model, exc.code, GEN_MODELS[i + 1])
