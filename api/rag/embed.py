@@ -36,6 +36,8 @@ _BASE_DELAY = 2.0     # seconds
 _MAX_DELAY = 60.0
 QUERY_ATTEMPTS = 3   # live queries: fail fast rather than hang the request
 
+HTTP_TIMEOUT_MS = 45_000  # per request, so a stalled connection cannot hang a query
+
 _ENV_PATH = Path(__file__).resolve().parents[1] / ".env"  # api/.env
 
 
@@ -47,7 +49,7 @@ def get_client() -> genai.Client:
         raise RuntimeError(
             f"GEMINI_API_KEY not set. Add it to {_ENV_PATH} (copy from .env.example)."
         )
-    return genai.Client(api_key=api_key)
+    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=HTTP_TIMEOUT_MS))
 
 
 def _sleep_for(attempt: int) -> None:
