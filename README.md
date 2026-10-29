@@ -89,7 +89,6 @@ api/
   main.py            FastAPI app (/api/health, /api/schemes, /api/query) and static frontend
   rag/               ingest, chunk, embed, store, indexer, retrieve, generate
   corpus/            source PDFs, scheme mapping, manifest
-  eval/              retrieval and answer evaluation scripts
   tests/             offline pytest suite
 web/                 React frontend
 render.yaml          Render blueprint
